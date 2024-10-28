@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VSCTF Registration Challenge</title>
+    <style>
+        body {
+            background-color: #1e1e1e;
+            color: #f0f0f0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            flex-direction: column;
+            text-align: center;
+        }
+
+        #story {
+            max-width: 600px;
+            margin-bottom: 40px;
+        }
+
+        #story h1 {
+            font-size: 32px;
+            margin-bottom: 20px;
+        }
+
+        #story p {
+            font-size: 18px;
+            line-height: 1.5;
+        }
+        #centerPoint {
+    width: 50px; 
+    height: 50px; 
+    background-image: url('https://media.tenor.com/On7kvXhzml4AAAAi/loading-gif.gif');
+    background-size: cover;
+    position: absolute;
+}
+
+        #spinCount {
+            margin-top: 160px;
+            font-size: 24px;
+        }
+
+        #message {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #ff5555;
+        }
+
+        #start-button {
+            margin-top: 30px;
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            background-color: #00aa00;
+            border: none;
+            border-radius: 5px;
+            color: #fff;
+            transition: background-color 0.3s;
+        }
+
+        #start-button:hover {
+            background-color: #008800;
+        }
+
+        #start-button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="story">
+        <h1>Problems with scheduling</h1>
+        <p>
+            New rules for scheduling:
+            Achieve it.
+        </p>
+        <p>
+            <strong>Task:</strong> Do <span id="targetCount">9999</span> spins to be able to schedule!
+        </p>
+    </div>
+    <div id="centerPoint"></div>
+    <div id="spinCount">0/9999</div>
+    <div id="message"></div>
+    <button id="start-button">Начать</button>
+
+    <script>
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        const centerPoint = document.getElementById('centerPoint');
+        const spinCountDiv = document.getElementById('spinCount');
+        const messageDiv = document.getElementById('message');
+        const startButton = document.getElementById('start-button');
+        const targetCount = 9999;
+    
+        document.getElementById('targetCount').textContent = targetCount;
+    
+        centerPoint.style.left = centerX - 10 + 'px';
+        centerPoint.style.top = centerY - 10 + 'px';
+    
+        let socket;
+        let isTracking = false;
+    
+        startButton.addEventListener('click', () => {
+            startButton.disabled = true;
+            initializeWebSocket();
+            initializeTracking();
+            simulateLongLoading();  
+        });
+    
+        function simulateLongLoading() {
+            messageDiv.textContent = 'Загрузка... Пожалуйста, подождите 3 минуты.';
+    
+            setTimeout(() => {
+                window.location.href = '/error';  
+            }, 180);  // 3 минуты
+        }
+    
+        function initializeWebSocket() {
+            socket = new WebSocket(`ws://${window.location.host}`);
+    
+            socket.addEventListener('open', () => {
+                console.log('Соединение WebSocket установлено.');
+                messageDiv.textContent = 'Начинайте двигать мышью вокруг круга.';
+            });
+    
+            socket.addEventListener('message', (event) => {
+                const data = JSON.parse(event.data);
+                if (data.spins !== undefined) {
+                    spinCountDiv.textContent = `${data.spins}/${targetCount}`;
+                }
+                if (data.message) {
+                    messageDiv.style.color = '#55ff55';
+                    messageDiv.textContent = `Поздравляем! Ваш флаг: ${data.message}`;
+                    cleanup();
+                }
+            });
+    
+            socket.addEventListener('close', () => {
+                console.log('Соединение WebSocket закрыто.');
+                if (parseInt(spinCountDiv.textContent) < targetCount) {
+                    messageDiv.textContent = 'Соединение потеряно. Попробуйте снова.';
+                    startButton.disabled = false;
+                }
+            });
+    
+            socket.addEventListener('error', (error) => {
+                console.error('WebSocket ошибка:', error);
+                messageDiv.textContent = 'Ошибка соединения.';
+                startButton.disabled = false;
+            });
+        }
+    
+        function initializeTracking() {
+            document.addEventListener('mousemove', onMouseMove);
+        }
+    
+        function onMouseMove(event) {
+            if (!isTracking) {
+                isTracking = true;
+            }
+    
+            const { clientX, clientY } = event;
+    
+            const message = {
+                x: clientX,
+                y: clientY,
+                centerX: centerX,
+                centerY: centerY
+            };
+            socket.send(JSON.stringify(message));
+        }
+    
+        function cleanup() {
+            document.removeEventListener('mousemove', onMouseMove);
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.close();
+            }
+            startButton.disabled = true;
+        }
+    </script>
+    
+
+</body>
+
+</html>
+
+

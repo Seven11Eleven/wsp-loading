@@ -1,0 +1,14 @@
+{
+  "name": "ctf-challenge",
+  "version": "1.0.0",
+  "description": "CTF задача на 9999 круговых движений мышью для получения флага",
+  "main": "server.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "ws": "^8.17.0"
+  },
+  "author": "Ваше Имя",
+  "license": "ISC"
+}
